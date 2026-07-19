@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bresenham · Rasterização</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+            padding: 20px;
+        }
+        .container {
+            background: #16213e;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            max-width: 950px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+        }
+        h1 span {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        /* Layout principal: Imagens | Parâmetros */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Área de Imagens (canvas) */
+        .canvas-wrapper {
+            flex: 1;
+            min-width: 400px;
+            background: #0f0f1f;
+            border: 2px solid #2c3e6b;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+        }
+        .canvas-wrapper .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px;
+            background: #1a1a3a;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #2c3e6b;
+        }
+        .canvas-wrapper .canvas-header span {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .canvas-wrapper .canvas-header .badge {
+            background: #2c3e6b;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            color: #aaa;
+        }
+        .canvas-wrapper .canvas-header .badge .count {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 900/520;
+            background: #0f0f1f;
+            cursor: crosshair;
+            border-radius: 0 0 8px 8px;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        /* Área de Parâmetros (sidebar) */
+        .sidebar {
+            background: #1a1a3a;
+            padding: 16px 18px;
+            border-radius: 10px;
+            border: 1px solid #2a2a5a;
+            min-width: 200px;
+            flex: 0 0 250px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 580px;
+        }
+        .sidebar .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #666;
+            border-bottom: 1px solid #2a2a5a;
+            padding-bottom: 4px;
+            text-align: center;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+        .sidebar .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .sidebar .param-group label {
+            font-size: 0.72rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar .param-group label .label-text {
+            color: #888;
+        }
+        .sidebar .param-group label .value-display {
+            color: #ef4444;
+            font-weight: 600;
+            font-size: 0.75rem;
+            min-width: 35px;
+            text-align: right;
+        }
+        .sidebar .param-group .param-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .sidebar .param-group .param-row span {
+            font-size: 0.72rem;
+            color: #888;
+            min-width: 14px;
+        }
+        .sidebar .param-group .param-row input[type="number"] {
+            flex: 1;
+            padding: 4px 6px;
+            border-radius: 4px;
+            border: none;
+            background: #2a2a4a;
+            color: #fff;
+            font-weight: 600;
+            text-align: center;
+            font-size: 0.8rem;
+            min-width: 40px;
+        }
+
+        .sidebar .btn-group {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .sidebar .btn-group .btn {
+            flex: 1;
+            min-width: 45px;
+            padding: 5px 8px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.62rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 0 #0a0a1a;
+            color: #fff;
+            text-align: center;
+        }
+        .sidebar .btn-group .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 0 #0a0a1a;
+        }
+        .sidebar .btn-group .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #0a0a1a;
+        }
+        .btn-warning { background: #d35400; }
+        .btn-warning:hover { background: #e67e22; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #2ecc71; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #e74c3c; }
+        .btn-primary { background: #2980b9; }
+        .btn-primary:hover { background: #3498db; }
+        .btn-secondary { background: #2a2a5a; }
+        .btn-secondary:hover { background: #3d3d7a; }
+        .btn-pink { background: #c2185b; }
+        .btn-pink:hover { background: #e91e63; }
+        .btn-small { font-size: 0.58rem; padding: 3px 8px; }
+
+        /* Passos do algoritmo */
+        .steps-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+            margin: 4px 0;
+            min-height: 60px;
+            max-height: 140px;
+            background: #0d0d1f;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.6rem;
+            line-height: 1.6;
+            color: #aaa;
+        }
+        .steps-scroll::-webkit-scrollbar { width: 4px; }
+        .steps-scroll::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 10px; }
+        .steps-scroll .step-line { 
+            color: #888;
+            padding: 1px 0;
+            border-bottom: 1px solid rgba(42, 42, 74, 0.3);
+        }
+        .steps-scroll .step-line .highlight { color: #ef4444; }
+        .steps-scroll .step-line .highlight-blue { color: #38bdf8; }
+
+        /* Tags */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            font-size: 0.55rem;
+            letter-spacing: 0.3px;
+        }
+
+        /* Info line */
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #888;
+            background: #0d0d1f;
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 1px solid #2a2a4a;
+            flex-shrink: 0;
+        }
+        .info-line span { color: #aaa; }
+        .info-line .val { color: #ef4444; font-weight: 600; }
+
+        .status-msg {
+            font-size: 0.65rem;
+            color: #888;
+            background: #0d0d1f;
+            padding: 3px 10px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #2a2a4a;
+            flex-shrink: 0;
+        }
+        .status-msg .highlight { color: #ef4444; }
+
+        @media (max-width: 780px) {
+            .main-layout { flex-direction: column; }
+            .canvas-wrapper { min-width: unset; }
+            .sidebar { flex: 1; min-width: unset; max-height: none; }
+            .steps-scroll { max-height: 100px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📐 Bresenham — <span>Rasterização</span></h1>
+    <div class="subtitle">Síntese e Processamento de Imagem</div>
+
+    <!-- Layout: Imagens | Parâmetros -->
+    <div class="main-layout">
+        <!-- Área de Imagens -->
+        <div class="canvas-wrapper">
+            <div class="canvas-header">
+                <span>📐 Grade de Pixels</span>
+                <span class="badge">Pontos: <span class="count" id="badgePoints">0</span></span>
+            </div>
+            <canvas id="gridCanvas" width="900" height="520"></canvas>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;flex-wrap:wrap;gap:4px;">
+                <div class="tags">
+                    <span class="tag">Rasterização</span>
+                    <span class="tag">Bresenham</span>
+                    <span class="tag">Pixel Art</span>
+                    <span class="tag">Processamento</span>
+                </div>
+                <span style="font-size:0.55rem;color:#555;">Clique na grade para definir pontos</span>
+            </div>
+        </div>
+
+        <!-- Área de Parâmetros -->
+        <div class="sidebar">
+            <div class="section-title">⚙️ Parâmetros</div>
+
+            <div class="param-group">
+                <label><span class="label-text">📍 Ponto A</span></label>
+                <div class="param-row">
+                    <span>X</span>
+                    <input type="number" id="x0" value="2" min="0" max="19">
+                    <span>Y</span>
+                    <input type="number" id="y0" value="2" min="0" max="19">
+                </div>
+            </div>
+
+            <div class="param-group">
+                <label><span class="label-text">📍 Ponto B</span></label>
+                <div class="param-row">
+                    <span>X</span>
+                    <input type="number" id="x1" value="16" min="0" max="19">
+                    <span>Y</span>
+                    <input type="number" id="y1" value="10" min="0" max="19">
+                </div>
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">🎨 Cor da Linha</span>
+                </label>
+                <input type="color" id="lineColor" value="#ef4444" style="width:100%;padding:2px;background:#2a2a4a;border:none;border-radius:4px;cursor:pointer;">
+            </div>
+
+            <div class="btn-group" style="flex-shrink:0;">
+                <button class="btn btn-primary" id="drawBtn">🔄 Desenhar</button>
+                <button class="btn btn-warning" id="thresholdBtn">⚡ Limiarizar</button>
+                <button class="btn btn-secondary" id="clearBtn">🗑️ Limpar</button>
+                <button class="btn btn-pink" id="randomBtn">🎲 Aleatório</button>
+            </div>
+
+            <div class="info-line">
+                <span>🔹 Pontos: <span class="val" id="pointsInfo">0</span></span>
+                <span>📐 <span class="val" id="statusInfo">Pronto</span></span>
+            </div>
+
+            <div class="param-group" style="flex:1; min-height:0;">
+                <label><span class="label-text">📋 Passos do Algoritmo</span></label>
+                <div class="steps-scroll" id="steps">
+                    <div class="step-line">Clique em "Desenhar" para ver os passos</div>
+                </div>
+            </div>
+
+            <div class="status-msg" id="statusMsg">🖱️ Clique na grade ou use os campos</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById("gridCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const cols = 20;
+        const rows = 20;
+        const cell = 28;
+        const offsetX = 40;
+        const offsetY = 20;
+
+        let grid = [];
+        let points = [];
+        let clicks = [];
+        let corLinha = '#ef4444';
+
+        // inputs
+        const x0Input = document.getElementById('x0');
+        const y0Input = document.getElementById('y0');
+        const x1Input = document.getElementById('x1');
+        const y1Input = document.getElementById('y1');
+        const lineColorInput = document.getElementById('lineColor');
+        const stepsDiv = document.getElementById('steps');
+        const badgePoints = document.getElementById('badgePoints');
+        const pointsInfo = document.getElementById('pointsInfo');
+        const statusInfo = document.getElementById('statusInfo');
+        const statusMsg = document.getElementById('statusMsg');
+
+        function initGrid() {
+            grid = Array.from({length: rows}, () => Array.from({length: cols}, () => 255));
+        }
+
+        function drawGridBase() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#0f0f1f";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    const px = offsetX + x * cell;
+                    const py = offsetY + y * cell;
+                    const isPixel = grid[y][x] === 0;
+                    ctx.fillStyle = isPixel ? corLinha : "#1a1a3a";
+                    ctx.fillRect(px, py, cell - 1, cell - 1);
+                    ctx.strokeStyle = "#2a2a4a";
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(px, py, cell - 1, cell - 1);
+                }
+            }
+
+            // Labels
+            ctx.fillStyle = "#555";
+            ctx.font = "10px monospace";
+            ctx.textAlign = "center";
+            for (let i = 0; i < cols; i++) {
+                ctx.fillText(i, offsetX + i * cell + cell/2, offsetY - 6);
+            }
+            for (let j = 0; j < rows; j++) {
+                ctx.fillText(j, offsetX - 14, offsetY + j * cell + cell/2 + 4);
+            }
+
+            // Marcadores
+            if (points.length === 2) {
+                const [a, b] = points;
+                drawMarker(a.x, a.y, "A", "#22c55e");
+                drawMarker(b.x, b.y, "B", "#22c55e");
+            }
+        }
+
+        function drawMarker(x, y, label, color) {
+            const px = offsetX + x * cell;
+            const py = offsetY + y * cell;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(px + cell/2, py + cell/2, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#0f0f1f";
+            ctx.font = "bold 10px monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(label, px + cell/2, py + cell/2 + 1);
+            ctx.textBaseline = "alphabetic";
+        }
+
+        function setSteps(lines) {
+            stepsDiv.innerHTML = lines.map(s => 
+                `<div class="step-line">• ${s}</div>`
+            ).join("");
+        }
+
+        function bresenham(x0, y0, x1, y1) {
+            let x = x0, y = y0;
+            const dx = Math.abs(x1 - x0);
+            const dy = Math.abs(y1 - y0);
+            const sx = x0 < x1 ? 1 : -1;
+            const sy = y0 < y1 ? 1 : -1;
+            let err = dx - dy;
+            const pts = [];
+            const steps = [];
+
+            while (true) {
+                pts.push({x, y});
+                steps.push(`Ponto (${x}, ${y}) | erro = ${err}`);
+                if (x === x1 && y === y1) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    y += sy;
+                }
+            }
+            return {pts, steps};
+        }
+
+        function clamp(v, min, max) {
+            return Math.max(min, Math.min(max, v));
+        }
+
+        function draw() {
+            const x0 = clamp(parseInt(x0Input.value || 0), 0, cols - 1);
+            const y0 = clamp(parseInt(y0Input.value || 0), 0, rows - 1);
+            const x1 = clamp(parseInt(x1Input.value || 0), 0, cols - 1);
+            const y1 = clamp(parseInt(y1Input.value || 0), 0, rows - 1);
+
+            x0Input.value = x0;
+            y0Input.value = y0;
+            x1Input.value = x1;
+            y1Input.value = y1;
+
+            points = [{x: x0, y: y0}, {x: x1, y: y1}];
+            const result = bresenham(x0, y0, x1, y1);
+            
+            initGrid();
+            result.pts.forEach(p => {
+                if (p.x >= 0 && p.x < cols && p.y >= 0 && p.y < rows) {
+                    grid[p.y][p.x] = 0;
+                }
+            });
+            
+            drawGridBase();
+            
+            const dx = Math.abs(x1 - x0);
+            const dy = Math.abs(y1 - y0);
+            const totalPixels = result.pts.length;
+            
+            setSteps([
+                `<span class="highlight">Entrada:</span> A=(${x0},${y0}) e B=(${x1},${y1})`,
+                `<span class="highlight-blue">dx</span>=${dx}, <span class="highlight-blue">dy</span>=${dy}`,
+                `⬡ ${totalPixels} pixels rasterizados`,
+                `--- Passos do algoritmo ---`,
+                ...result.steps.slice(0, 14)
+            ]);
+
+            badgePoints.textContent = totalPixels;
+            pointsInfo.textContent = totalPixels;
+            statusInfo.textContent = 'Rasterizado';
+            statusMsg.innerHTML = `✅ Linha desenhada de (${x0},${y0}) para (${x1},${y1}) — ${totalPixels} pixels`;
+        }
+
+        function applyThreshold() {
+            let changed = 0;
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < cols; x++) {
+                    if (grid[y][x] < 128 && grid[y][x] !== 0) {
+                        grid[y][x] = 0;
+                        changed++;
+                    } else if (grid[y][x] >= 128 && grid[y][x] !== 255) {
+                        grid[y][x] = 255;
+                        changed++;
+                    }
+                }
+            }
+            drawGridBase();
+            setSteps([
+                "<span class=\"highlight\">Processamento de imagem: limiarização</span>",
+                "Os pixels pretos permanecem como 0 e os claros como 255.",
+                `⬡ ${changed} pixels modificados`,
+                "Isso mostra como uma imagem raster pode ser manipulada pixel a pixel."
+            ]);
+            statusMsg.innerHTML = `⚡ Limiarização aplicada — ${changed} pixels modificados`;
+            statusInfo.textContent = 'Processado';
+        }
+
+        function resetGrid() {
+            initGrid();
+            points = [];
+            clicks = [];
+            drawGridBase();
+            setSteps([
+                "Grade limpa.",
+                "Digite dois pontos ou clique na grade para escolher A e B."
+            ]);
+            badgePoints.textContent = '0';
+            pointsInfo.textContent = '0';
+            statusInfo.textContent = 'Pronto';
+            statusMsg.innerHTML = '🗑️ Grade <span style="color:#2ecc71;">limpa</span>!';
+        }
+
+        function randomPoints() {
+            const x0 = Math.floor(Math.random() * cols);
+            const y0 = Math.floor(Math.random() * rows);
+            const x1 = Math.floor(Math.random() * cols);
+            const y1 = Math.floor(Math.random() * rows);
+            x0Input.value = x0;
+            y0Input.value = y0;
+            x1Input.value = x1;
+            y1Input.value = y1;
+            draw();
+            statusMsg.innerHTML = `🎲 Pontos aleatórios: A=(${x0},${y0}) B=(${x1},${y1})`;
+        }
+
+        // Eventos
+        document.getElementById('drawBtn').addEventListener('click', draw);
+        document.getElementById('thresholdBtn').addEventListener('click', applyThreshold);
+        document.getElementById('clearBtn').addEventListener('click', resetGrid);
+        document.getElementById('randomBtn').addEventListener('click', randomPoints);
+
+        lineColorInput.addEventListener('input', () => {
+            corLinha = lineColorInput.value;
+            drawGridBase();
+        });
+
+        [x0Input, y0Input, x1Input, y1Input].forEach(input => {
+            input.addEventListener('change', draw);
+        });
+
+        // Clique no canvas
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = Math.floor((e.clientX - rect.left) * scaleX - offsetX);
+            const y = Math.floor((e.clientY - rect.top) * scaleY - offsetY);
+            
+            if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+
+            clicks.push({x, y});
+            if (clicks.length > 2) clicks = clicks.slice(-2);
+
+            if (clicks.length === 1) {
+                x0Input.value = clicks[0].x;
+                y0Input.value = clicks[0].y;
+                statusMsg.innerHTML = `📍 Ponto A definido em (${clicks[0].x}, ${clicks[0].y}) — clique para definir B`;
+            } else if (clicks.length === 2) {
+                x1Input.value = clicks[1].x;
+                y1Input.value = clicks[1].y;
+                draw();
+                statusMsg.innerHTML = `📍 Pontos definidos: A=(${clicks[0].x},${clicks[0].y}) B=(${clicks[1].x},${clicks[1].y})`;
+            }
+        });
+
+        // Inicialização
+        initGrid();
+        draw();
+        statusMsg.innerHTML = '🖱️ Clique na grade ou ajuste os campos para desenhar';
+
+        window.__state = { grid, points };
+    })();
+</script>
+
+</body>
+</html>
