@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recorte de Polígono - Sutherland-Hodgman</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+        }
+        .container {
+            background: #16213e;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            max-width: 950px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+        }
+        h1 span {
+            color: #e67e22;
+            font-weight: 600;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        /* Layout principal: Imagens | Parâmetros */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Área de Imagens (canvas) */
+        .canvas-wrapper {
+            flex: 1;
+            min-width: 500px;
+            background: #0f0f1f;
+            border: 2px solid #2c3e6b;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+        }
+        .canvas-wrapper .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px;
+            background: #1a1a3a;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #2c3e6b;
+        }
+        .canvas-wrapper .canvas-header span {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .canvas-wrapper .canvas-header .badge {
+            background: #2c3e6b;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            color: #aaa;
+        }
+        .canvas-wrapper .canvas-header .badge .count {
+            color: #e67e22;
+            font-weight: 600;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 700/500;
+            background: #0f0f1f;
+            cursor: crosshair;
+            border-radius: 0 0 8px 8px;
+        }
+
+        /* Área de Parâmetros (sidebar) */
+        .sidebar {
+            background: #1a1a3a;
+            padding: 16px 18px;
+            border-radius: 10px;
+            border: 1px solid #2a2a5a;
+            min-width: 200px;
+            flex: 0 0 230px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #666;
+            border-bottom: 1px solid #2a2a5a;
+            padding-bottom: 4px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .sidebar .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .sidebar .param-group label {
+            font-size: 0.72rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar .param-group label .label-text {
+            color: #888;
+        }
+        .sidebar .param-group label .value-display {
+            color: #e67e22;
+            font-weight: 600;
+            font-size: 0.75rem;
+            min-width: 35px;
+            text-align: right;
+        }
+        .sidebar .param-group input[type="number"] {
+            width: 100%;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            background: #2a2a4a;
+            color: #fff;
+            font-weight: 600;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        .sidebar .param-group input[type="range"] {
+            width: 100%;
+            accent-color: #e67e22;
+            height: 4px;
+            background: #2a2a4a;
+            border-radius: 2px;
+            outline: none;
+        }
+        .sidebar .param-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #e67e22;
+            cursor: pointer;
+        }
+        .sidebar .param-group select {
+            width: 100%;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            background: #2a2a4a;
+            color: #fff;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+        .sidebar .param-group select:focus {
+            outline: 2px solid #e67e22;
+        }
+        .sidebar .param-group .hint {
+            font-size: 0.6rem;
+            color: #555;
+            text-align: right;
+            margin-top: -2px;
+        }
+
+        .sidebar .btn-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .sidebar .btn-group .btn {
+            flex: 1;
+            min-width: 55px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 0 #0a0a1a;
+            color: #fff;
+            text-align: center;
+        }
+        .sidebar .btn-group .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 0 #0a0a1a;
+        }
+        .sidebar .btn-group .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #0a0a1a;
+        }
+        .btn-warning { background: #d35400; }
+        .btn-warning:hover { background: #e67e22; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #2ecc71; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #e74c3c; }
+        .btn-primary { background: #2980b9; }
+        .btn-primary:hover { background: #3498db; }
+
+        /* Legendas */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 6px;
+            font-size: 0.65rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 18px;
+            height: 2px;
+            border-radius: 2px;
+        }
+        .legend-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        /* Status e Info */
+        .status {
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: #7f8c8d;
+        }
+        .status span {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .status .error {
+            color: #e74c3c;
+        }
+        .info {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: #aaa;
+            background: #0d0d1f;
+            padding: 4px 14px;
+            border-radius: 16px;
+            display: inline-block;
+            border: 1px solid #2a2a4a;
+        }
+        .info strong {
+            color: #e67e22;
+        }
+
+        .vertex-count {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        .vertex-count strong {
+            color: #e67e22;
+        }
+
+        @media (max-width: 780px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .canvas-wrapper {
+                min-width: unset;
+            }
+            .sidebar {
+                flex: 1;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔷 Recorte de Polígono — <span>Sutherland-Hodgman</span></h1>
+    <div class="subtitle">Síntese e Processamento de Imagem</div>
+
+    <!-- Layout: Imagens | Parâmetros -->
+    <div class="main-layout">
+        <!-- Área de Imagens -->
+        <div class="canvas-wrapper">
+            <div class="canvas-header">
+                <span>📐 Recorte de Polígono</span>
+                <span class="badge">Vértices: <span class="count" id="badgeCount">0</span></span>
+            </div>
+            <canvas id="canvas" width="700" height="500"></canvas>
+
+            <div class="legend">
+                <div class="legend-item"><span class="legend-color" style="background: #e74c3c;"></span> Original</div>
+                <div class="legend-item"><span class="legend-color" style="background: #2ecc71;"></span> Recortado</div>
+                <div class="legend-item"><span class="legend-dot" style="background: #f1c40f;"></span> Janela</div>
+                <div class="legend-item"><span class="legend-dot" style="background: #e74c3c; width: 5px; height: 5px;"></span> Vértices</div>
+            </div>
+        </div>
+
+        <!-- Área de Parâmetros -->
+        <div class="sidebar">
+            <div class="section-title">⚙️ Parâmetros</div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📐 Janela X</span>
+                </label>
+                <input type="number" id="winX" value="200" min="10" max="680">
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📐 Janela Y</span>
+                </label>
+                <input type="number" id="winY" value="150" min="10" max="480">
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📏 Largura</span>
+                </label>
+                <input type="number" id="winW" value="300" min="20" max="680">
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📏 Altura</span>
+                </label>
+                <input type="number" id="winH" value="200" min="20" max="480">
+            </div>
+
+            <div class="param-group" style="margin-top:4px;">
+                <label>
+                    <span class="label-text">🎨 Cor do Recorte</span>
+                </label>
+                <input type="color" id="clipColor" value="#2ecc71" style="width:100%;padding:2px;background:#2a2a4a;border:none;border-radius:4px;cursor:pointer;">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-warning" id="btnRandom">🎲 Aleatório</button>
+                <button class="btn btn-primary" id="btnExample">📋 Exemplo</button>
+                <button class="btn btn-success" id="btnClip">✂️ Recortar</button>
+                <button class="btn btn-danger" id="btnClear">🗑️ Limpar</button>
+            </div>
+
+            <div class="vertex-count" id="vertexCount">
+                Original: <strong id="origCount">0</strong> | Recortado: <strong id="clipCount">0</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="status" id="statusMsg">🖱️ Clique no canvas para adicionar vértices (mínimo 3)</div>
+    <div class="info">
+        🖱️ Clique para adicionar | <strong>Enter</strong> para recortar | <strong>Esc</strong> para limpar
+        <span id="coordDisplay" style="color:#e67e22; margin-left:12px;">Vértices: 0</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- estado ---
+        let polygon = [];
+        let clippedPolygon = null;
+        let clipWindow = { x: 200, y: 150, w: 300, h: 200 };
+        let clipColor = '#2ecc71';
+
+        // referências DOM
+        const winX = document.getElementById('winX');
+        const winY = document.getElementById('winY');
+        const winW = document.getElementById('winW');
+        const winH = document.getElementById('winH');
+        const clipColorInput = document.getElementById('clipColor');
+        const badgeCount = document.getElementById('badgeCount');
+        const origCount = document.getElementById('origCount');
+        const clipCount = document.getElementById('clipCount');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const statusMsg = document.getElementById('statusMsg');
+
+        // --- algoritmo de Sutherland-Hodgman ---
+        function sutherlandHodgman(subjectPolygon, clipWindow) {
+            if (subjectPolygon.length < 3) return null;
+
+            const xMin = clipWindow.x;
+            const xMax = clipWindow.x + clipWindow.w;
+            const yMin = clipWindow.y;
+            const yMax = clipWindow.y + clipWindow.h;
+
+            function clipAgainstEdge(poly, edge) {
+                const output = [];
+                const n = poly.length;
+                if (n === 0) return output;
+
+                for (let i = 0; i < n; i++) {
+                    const current = poly[i];
+                    const next = poly[(i + 1) % n];
+
+                    const currentInside = isInside(current, edge);
+                    const nextInside = isInside(next, edge);
+
+                    if (currentInside && nextInside) {
+                        output.push({ ...next });
+                    } else if (currentInside && !nextInside) {
+                        const intersection = computeIntersection(current, next, edge);
+                        output.push(intersection);
+                    } else if (!currentInside && nextInside) {
+                        const intersection = computeIntersection(current, next, edge);
+                        output.push(intersection);
+                        output.push({ ...next });
+                    }
+                }
+                return output;
+            }
+
+            function isInside(point, edge) {
+                switch(edge) {
+                    case 'left': return point.x >= xMin;
+                    case 'right': return point.x <= xMax;
+                    case 'bottom': return point.y >= yMin;
+                    case 'top': return point.y <= yMax;
+                    default: return false;
+                }
+            }
+
+            function computeIntersection(p1, p2, edge) {
+                const x1 = p1.x, y1 = p1.y;
+                const x2 = p2.x, y2 = p2.y;
+                let x, y;
+
+                switch(edge) {
+                    case 'left':
+                        x = xMin;
+                        y = y1 + (y2 - y1) * (xMin - x1) / (x2 - x1);
+                        break;
+                    case 'right':
+                        x = xMax;
+                        y = y1 + (y2 - y1) * (xMax - x1) / (x2 - x1);
+                        break;
+                    case 'bottom':
+                        y = yMin;
+                        x = x1 + (x2 - x1) * (yMin - y1) / (y2 - y1);
+                        break;
+                    case 'top':
+                        y = yMax;
+                        x = x1 + (x2 - x1) * (yMax - y1) / (y2 - y1);
+                        break;
+                    default: return { x: 0, y: 0 };
+                }
+                return { x, y };
+            }
+
+            let result = [...subjectPolygon];
+            const edges = ['left', 'right', 'bottom', 'top'];
+            for (const edge of edges) {
+                result = clipAgainstEdge(result, edge);
+                if (result.length < 3) return null;
+            }
+            return result;
+        }
+
+        // --- desenho ---
+        function draw() {
+            ctx.clearRect(0, 0, 700, 500);
+
+            // Grade
+            ctx.strokeStyle = '#1e1e3a';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x <= 700; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 500);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= 500; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(700, y);
+                ctx.stroke();
+            }
+
+            const win = clipWindow;
+
+            // --- janela de recorte ---
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 6]);
+            ctx.strokeRect(win.x, win.y, win.w, win.h);
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = '11px monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('Janela de recorte', win.x + 6, win.y - 8);
+
+            ctx.fillStyle = 'rgba(241, 196, 15, 0.05)';
+            ctx.fillRect(win.x, win.y, win.w, win.h);
+
+            // --- polígono original ---
+            if (polygon.length > 0) {
+                ctx.strokeStyle = '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 6]);
+                ctx.beginPath();
+                ctx.moveTo(polygon[0].x, polygon[0].y);
+                for (let i = 1; i < polygon.length; i++) {
+                    ctx.lineTo(polygon[i].x, polygon[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#e74c3c';
+                polygon.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.font = '8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i + 1, p.x, p.y - 10);
+                    ctx.fillStyle = '#e74c3c';
+                });
+
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = '10px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText('Polígono original', 10, 20);
+            }
+
+            // --- polígono recortado ---
+            if (clippedPolygon && clippedPolygon.length >= 3) {
+                const color = clipColor;
+                
+                ctx.fillStyle = color + '15';
+                ctx.beginPath();
+                ctx.moveTo(clippedPolygon[0].x, clippedPolygon[0].y);
+                for (let i = 1; i < clippedPolygon.length; i++) {
+                    ctx.lineTo(clippedPolygon[i].x, clippedPolygon[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(clippedPolygon[0].x, clippedPolygon[0].y);
+                for (let i = 1; i < clippedPolygon.length; i++) {
+                    ctx.lineTo(clippedPolygon[i].x, clippedPolygon[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = color;
+                clippedPolygon.forEach((p, i) => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = color;
+                    ctx.font = '8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i + 1, p.x, p.y - 12);
+                    ctx.fillStyle = color;
+                });
+
+                ctx.fillStyle = color;
+                ctx.font = '10px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText('Polígono recortado', 10, 40);
+            }
+
+            // --- atualizar informações ---
+            const originalCount = polygon.length;
+            const clippedCount = clippedPolygon ? clippedPolygon.length : 0;
+            
+            badgeCount.textContent = originalCount;
+            origCount.textContent = originalCount;
+            clipCount.textContent = clippedCount;
+            coordDisplay.textContent = `Vértices: ${originalCount}`;
+
+            if (polygon.length === 0) {
+                statusMsg.innerHTML = '🖱️ Clique no canvas para adicionar <span>vértices</span> do polígono';
+            } else if (polygon.length < 3) {
+                statusMsg.innerHTML = `⚠️ Adicione mais ${3 - polygon.length} vértice(s) (mínimo 3)`;
+            } else if (clippedPolygon && clippedPolygon.length >= 3) {
+                statusMsg.innerHTML = '✅ Polígono recortado com <span>sucesso</span>!';
+            } else if (clippedPolygon && clippedPolygon.length < 3) {
+                statusMsg.innerHTML = '❌ Polígono <span class="error">totalmente fora</span> da janela';
+            } else {
+                statusMsg.innerHTML = '✂️ Clique em <span>"Recortar"</span> para aplicar o recorte';
+            }
+        }
+
+        // --- atualizar janela ---
+        function updateWindowFromInputs() {
+            const x = parseInt(winX.value, 10) || 0;
+            const y = parseInt(winY.value, 10) || 0;
+            const w = parseInt(winW.value, 10) || 20;
+            const h = parseInt(winH.value, 10) || 20;
+            clipWindow.x = Math.min(Math.max(x, 0), 680);
+            clipWindow.y = Math.min(Math.max(y, 0), 480);
+            clipWindow.w = Math.min(Math.max(w, 10), 700 - clipWindow.x);
+            clipWindow.h = Math.min(Math.max(h, 10), 500 - clipWindow.y);
+            winX.value = clipWindow.x;
+            winY.value = clipWindow.y;
+            winW.value = clipWindow.w;
+            winH.value = clipWindow.h;
+            if (polygon.length >= 3) performClip();
+            draw();
+        }
+
+        // --- executar recorte ---
+        function performClip() {
+            if (polygon.length < 3) {
+                clippedPolygon = null;
+                draw();
+                return;
+            }
+            const result = sutherlandHodgman(polygon, clipWindow);
+            clippedPolygon = result;
+            draw();
+        }
+
+        // --- gerar polígono aleatório ---
+        function randomPolygon() {
+            const numVertices = Math.floor(Math.random() * 6) + 5;
+            const newPolygon = [];
+            const cx = 350, cy = 250;
+            const radius = Math.random() * 150 + 80;
+            
+            for (let i = 0; i < numVertices; i++) {
+                const angle = (i / numVertices) * 2 * Math.PI + Math.random() * 0.4;
+                const r = radius * (0.6 + Math.random() * 0.5);
+                const x = cx + r * Math.cos(angle);
+                const y = cy + r * Math.sin(angle);
+                newPolygon.push({
+                    x: Math.min(Math.max(x, 10), 690),
+                    y: Math.min(Math.max(y, 10), 490)
+                });
+            }
+            polygon = newPolygon;
+            performClip();
+            statusMsg.innerHTML = '🎲 Polígono aleatório <span>gerado</span>!';
+        }
+
+        // --- carregar exemplo ---
+        function loadExample() {
+            polygon = [
+                { x: 100, y: 100 },
+                { x: 250, y: 50 },
+                { x: 400, y: 100 },
+                { x: 450, y: 250 },
+                { x: 350, y: 400 },
+                { x: 150, y: 380 },
+                { x: 80, y: 250 }
+            ];
+            performClip();
+            statusMsg.innerHTML = '📋 Exemplo <span>carregado</span>!';
+        }
+
+        // --- eventos do canvas ---
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            const clampedX = Math.min(Math.max(x, 0), 700);
+            const clampedY = Math.min(Math.max(y, 0), 500);
+
+            polygon.push({ x: clampedX, y: clampedY });
+            clippedPolygon = null;
+            draw();
+        });
+
+        // Teclas
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performClip();
+            }
+            if (e.key === 'Escape') {
+                polygon = [];
+                clippedPolygon = null;
+                draw();
+                statusMsg.innerHTML = '🗑️ Polígono <span>limpo</span>. Clique para adicionar vértices';
+            }
+        });
+
+        // --- eventos dos botões ---
+        document.getElementById('btnRandom').addEventListener('click', randomPolygon);
+        document.getElementById('btnExample').addEventListener('click', loadExample);
+        document.getElementById('btnClip').addEventListener('click', performClip);
+        document.getElementById('btnClear').addEventListener('click', () => {
+            polygon = [];
+            clippedPolygon = null;
+            draw();
+            statusMsg.innerHTML = '🗑️ Polígono <span>limpo</span>. Clique para adicionar vértices';
+        });
+
+        // --- eventos dos inputs ---
+        [winX, winY, winW, winH].forEach(input => {
+            input.addEventListener('input', updateWindowFromInputs);
+        });
+
+        clipColorInput.addEventListener('input', () => {
+            clipColor = clipColorInput.value;
+            draw();
+        });
+
+        // --- inicializar ---
+        loadExample();
+
+        window.__state = { polygon, clippedPolygon, clipWindow };
+    })();
+</script>
+
+</body>
+</html>
