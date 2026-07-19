@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projeções 3D - Ortográfica, Oblíqua e Perspectiva</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #eee;
+        }
+        .container {
+            background: #16213e;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            max-width: 950px;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+        }
+        h1 span {
+            color: #e67e22;
+            font-weight: 600;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 15px;
+        }
+        
+        /* Layout principal: Imagens | Parâmetros */
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        /* Área de Imagens (canvas) */
+        .canvas-wrapper {
+            flex: 1;
+            min-width: 500px;
+            background: #0f0f1f;
+            border: 2px solid #2c3e6b;
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+        }
+        .canvas-wrapper .canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px;
+            background: #1a1a3a;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #2c3e6b;
+        }
+        .canvas-wrapper .canvas-header span {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .canvas-wrapper .canvas-header .badge {
+            background: #2c3e6b;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            color: #aaa;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 600/450;
+            background: #0f0f1f;
+            cursor: crosshair;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        /* Área de Parâmetros (sidebar) */
+        .sidebar {
+            background: #1a1a3a;
+            padding: 16px 18px;
+            border-radius: 10px;
+            border: 1px solid #2a2a5a;
+            min-width: 200px;
+            flex: 0 0 230px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sidebar .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #666;
+            border-bottom: 1px solid #2a2a5a;
+            padding-bottom: 4px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .sidebar .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .sidebar .param-group label {
+            font-size: 0.72rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar .param-group label .label-text {
+            color: #888;
+        }
+        .sidebar .param-group label .value-display {
+            color: #e67e22;
+            font-weight: 600;
+            font-size: 0.75rem;
+            min-width: 35px;
+            text-align: right;
+        }
+        .sidebar .param-group input[type="range"] {
+            width: 100%;
+            accent-color: #e67e22;
+            height: 4px;
+            background: #2a2a4a;
+            border-radius: 2px;
+            outline: none;
+        }
+        .sidebar .param-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #e67e22;
+            cursor: pointer;
+        }
+        .sidebar .param-group select {
+            width: 100%;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: none;
+            background: #2a2a4a;
+            color: #fff;
+            font-size: 0.78rem;
+            cursor: pointer;
+        }
+        .sidebar .param-group select:focus {
+            outline: 2px solid #e67e22;
+        }
+        .sidebar .param-group .hint {
+            font-size: 0.6rem;
+            color: #555;
+            text-align: right;
+            margin-top: -2px;
+        }
+        
+        .sidebar .btn-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .sidebar .btn-group .btn {
+            flex: 1;
+            min-width: 55px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 0 #0a0a1a;
+            color: #fff;
+            text-align: center;
+        }
+        .sidebar .btn-group .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 0 #0a0a1a;
+        }
+        .sidebar .btn-group .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #0a0a1a;
+        }
+        .btn-warning { background: #d35400; }
+        .btn-warning:hover { background: #e67e22; }
+        .btn-purple { background: #6c3483; }
+        .btn-purple:hover { background: #8e44ad; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #2ecc71; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #e74c3c; }
+        .btn-primary { background: #2980b9; }
+        .btn-primary:hover { background: #3498db; }
+        
+        /* Legendas */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 6px;
+            font-size: 0.65rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 18px;
+            height: 2px;
+            border-radius: 2px;
+        }
+        .legend-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+        
+        /* Status e Info */
+        .status {
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: #7f8c8d;
+        }
+        .status span {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+        .info {
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: #aaa;
+            background: #0d0d1f;
+            padding: 4px 14px;
+            border-radius: 16px;
+            display: inline-block;
+            border: 1px solid #2a2a4a;
+        }
+        .info strong {
+            color: #e67e22;
+        }
+        
+        @media (max-width: 780px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            .canvas-wrapper {
+                min-width: unset;
+            }
+            .sidebar {
+                flex: 1;
+                min-width: unset;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎯 Projeções 3D — <span>Ortográfica · Oblíqua · Perspectiva</span></h1>
+    <div class="subtitle">Síntese e Processamento de Imagem</div>
+
+    <!-- Layout: Imagens | Parâmetros -->
+    <div class="main-layout">
+        <!-- Área de Imagens -->
+        <div class="canvas-wrapper">
+            <div class="canvas-header">
+                <span>📐 Projeção</span>
+                <span class="badge" id="projBadge">Oblíqua</span>
+            </div>
+            <canvas id="canvas" width="600" height="450"></canvas>
+            
+            <div class="legend">
+                <div class="legend-item"><span class="legend-color" style="background: #3498db;"></span> Arestas</div>
+                <div class="legend-item"><span class="legend-dot" style="background: #e74c3c;"></span> Vértices</div>
+                <div class="legend-item"><span class="legend-dot" style="background: #f1c40f;"></span> Centro</div>
+            </div>
+        </div>
+
+        <!-- Área de Parâmetros -->
+        <div class="sidebar">
+            <div class="section-title">⚙️ Parâmetros</div>
+            
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📐 Projeção</span>
+                </label>
+                <select id="projectionType">
+                    <option value="orthographic">Ortográfica</option>
+                    <option value="oblique" selected>Oblíqua</option>
+                    <option value="perspective">Perspectiva</option>
+                </select>
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">🔄 Rotação X</span>
+                    <span class="value-display" id="rotXDisplay">30°</span>
+                </label>
+                <input type="range" id="rotX" min="-180" max="180" value="30">
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">🔄 Rotação Y</span>
+                    <span class="value-display" id="rotYDisplay">-20°</span>
+                </label>
+                <input type="range" id="rotY" min="-180" max="180" value="-20">
+            </div>
+
+            <div class="param-group" id="obliqueParams">
+                <label>
+                    <span class="label-text">📏 Fator Oblíquo</span>
+                    <span class="value-display" id="obliqueFactorDisplay">0.7</span>
+                </label>
+                <input type="range" id="obliqueFactor" min="0.1" max="1.5" step="0.1" value="0.7">
+            </div>
+
+            <div class="param-group" id="perspectiveParams" style="display:none;">
+                <label>
+                    <span class="label-text">👁️ Distância (d)</span>
+                    <span class="value-display" id="perspDistDisplay">400</span>
+                </label>
+                <input type="range" id="perspDist" min="100" max="800" step="10" value="400">
+            </div>
+
+            <div class="param-group">
+                <label>
+                    <span class="label-text">📐 Tamanho</span>
+                    <span class="value-display" id="sizeDisplay">80</span>
+                </label>
+                <input type="range" id="size" min="30" max="120" value="80">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-warning" id="btnRandom">🎲 Aleatório</button>
+                <button class="btn btn-purple" id="btnExample">📋 Cubo</button>
+                <button class="btn btn-success" id="btnApply">🔄 Aplicar</button>
+                <button class="btn btn-danger" id="btnClear">🗑️ Limpar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status" id="statusMsg">📐 Use os controles para ajustar a projeção</div>
+    <div class="info">
+        🖱️ Clique no canvas para adicionar vértices | <strong>Enter</strong> para aplicar | <strong>Esc</strong> para limpar
+        <span id="coordDisplay" style="color:#e67e22; margin-left:12px;">Vértices: 0</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- estado ---
+        let vertices3D = [];
+        let edges = [];
+        let projectedPoints = [];
+        let isDragging = false;
+        let dragIndex = -1;
+
+        // referências DOM
+        const projectionType = document.getElementById('projectionType');
+        const projBadge = document.getElementById('projBadge');
+        const rotX = document.getElementById('rotX');
+        const rotY = document.getElementById('rotY');
+        const rotXDisplay = document.getElementById('rotXDisplay');
+        const rotYDisplay = document.getElementById('rotYDisplay');
+        const obliqueFactor = document.getElementById('obliqueFactor');
+        const obliqueFactorDisplay = document.getElementById('obliqueFactorDisplay');
+        const perspDist = document.getElementById('perspDist');
+        const perspDistDisplay = document.getElementById('perspDistDisplay');
+        const size = document.getElementById('size');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const obliqueParams = document.getElementById('obliqueParams');
+        const perspectiveParams = document.getElementById('perspectiveParams');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const statusMsg = document.getElementById('statusMsg');
+
+        // --- funções de transformação 3D ---
+
+        function rotateX(p, angle) {
+            const rad = angle * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return {
+                x: p.x,
+                y: p.y * cos - p.z * sin,
+                z: p.y * sin + p.z * cos
+            };
+        }
+
+        function rotateY(p, angle) {
+            const rad = angle * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return {
+                x: p.x * cos + p.z * sin,
+                y: p.y,
+                z: -p.x * sin + p.z * cos
+            };
+        }
+
+        function projectOrthographic(p) {
+            return { x: p.x, y: p.y };
+        }
+
+        function projectOblique(p, factor) {
+            const angle = 45 * Math.PI / 180;
+            return {
+                x: p.x + factor * p.z * Math.cos(angle),
+                y: p.y + factor * p.z * Math.sin(angle)
+            };
+        }
+
+        function projectPerspective(p, d) {
+            const scale = d / (d + p.z);
+            return {
+                x: p.x * scale,
+                y: p.y * scale
+            };
+        }
+
+        // --- gerar sólidos 3D ---
+
+        function createCube(size) {
+            const s = size / 2;
+            const verts = [
+                { x: -s, y: -s, z: -s },
+                { x:  s, y: -s, z: -s },
+                { x:  s, y:  s, z: -s },
+                { x: -s, y:  s, z: -s },
+                { x: -s, y: -s, z:  s },
+                { x:  s, y: -s, z:  s },
+                { x:  s, y:  s, z:  s },
+                { x: -s, y:  s, z:  s }
+            ];
+            const edgeList = [
+                [0,1], [1,2], [2,3], [3,0],
+                [4,5], [5,6], [6,7], [7,4],
+                [0,4], [1,5], [2,6], [3,7]
+            ];
+            return { vertices: verts, edges: edgeList };
+        }
+
+        function createPyramid(size) {
+            const s = size / 2;
+            const h = size * 0.8;
+            const verts = [
+                { x: -s, y: -s, z: -s },
+                { x:  s, y: -s, z: -s },
+                { x:  s, y: -s, z:  s },
+                { x: -s, y: -s, z:  s },
+                { x: 0, y: h, z: 0 }
+            ];
+            const edgeList = [
+                [0,1], [1,2], [2,3], [3,0],
+                [0,4], [1,4], [2,4], [3,4]
+            ];
+            return { vertices: verts, edges: edgeList };
+        }
+
+        function createPrism(size) {
+            const s = size / 2;
+            const h = size * 0.7;
+            const verts = [];
+            const numSides = 6;
+            for (let i = 0; i < numSides; i++) {
+                const angle = (i / numSides) * 2 * Math.PI;
+                verts.push({ x: s * Math.cos(angle), y: -h/2, z: s * Math.sin(angle) });
+            }
+            for (let i = 0; i < numSides; i++) {
+                const angle = (i / numSides) * 2 * Math.PI;
+                verts.push({ x: s * Math.cos(angle), y: h/2, z: s * Math.sin(angle) });
+            }
+            const edgeList = [];
+            const n = numSides;
+            for (let i = 0; i < n; i++) {
+                edgeList.push([i, (i + 1) % n]);
+                edgeList.push([i + n, ((i + 1) % n) + n]);
+                edgeList.push([i, i + n]);
+            }
+            return { vertices: verts, edges: edgeList };
+        }
+
+        // --- processar projeção ---
+        function processProjection() {
+            if (vertices3D.length < 2) {
+                projectedPoints = [];
+                draw();
+                return;
+            }
+
+            const rotXVal = parseFloat(rotX.value) || 0;
+            const rotYVal = parseFloat(rotY.value) || 0;
+            const sizeVal = parseFloat(size.value) || 80;
+            const projType = projectionType.value;
+            const obliqueFact = parseFloat(obliqueFactor.value) || 0.7;
+            const perspDistVal = parseFloat(perspDist.value) || 400;
+
+            // Atualizar badge
+            const names = {
+                'orthographic': 'Ortográfica',
+                'oblique': 'Oblíqua',
+                'perspective': 'Perspectiva'
+            };
+            projBadge.textContent = names[projType] || 'Oblíqua';
+
+            let rotated = vertices3D.map(v => {
+                let p = { ...v };
+                p = rotateX(p, rotXVal);
+                p = rotateY(p, rotYVal);
+                return p;
+            });
+
+            let projected;
+            switch(projType) {
+                case 'orthographic':
+                    projected = rotated.map(p => projectOrthographic(p));
+                    break;
+                case 'oblique':
+                    projected = rotated.map(p => projectOblique(p, obliqueFact));
+                    break;
+                case 'perspective':
+                    projected = rotated.map(p => projectPerspective(p, perspDistVal));
+                    break;
+                default:
+                    projected = rotated.map(p => projectOrthographic(p));
+            }
+
+            const cx = 300, cy = 225;
+            const scale = sizeVal / 80;
+            
+            projectedPoints = projected.map(p => ({
+                x: cx + p.x * scale,
+                y: cy - p.y * scale
+            }));
+
+            draw();
+            statusMsg.innerHTML = `✅ Projeção <span>${names[projType]}</span> aplicada com sucesso!`;
+        }
+
+        // --- desenho ---
+        function draw() {
+            ctx.clearRect(0, 0, 600, 450);
+
+            // Grade
+            ctx.strokeStyle = '#1e1e3a';
+            ctx.lineWidth = 0.5;
+            for (let x = 0; x <= 600; x += 30) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, 450);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= 450; y += 30) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(600, y);
+                ctx.stroke();
+            }
+
+            // Centro
+            ctx.strokeStyle = 'rgba(241, 196, 15, 0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([3, 5]);
+            ctx.beginPath();
+            ctx.moveTo(300, 0);
+            ctx.lineTo(300, 450);
+            ctx.moveTo(0, 225);
+            ctx.lineTo(600, 225);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = 'rgba(241, 196, 15, 0.4)';
+            ctx.beginPath();
+            ctx.arc(300, 225, 3, 0, 2 * Math.PI);
+            ctx.fill();
+
+            // Arestas
+            if (projectedPoints.length > 0 && edges.length > 0) {
+                edges.forEach(edge => {
+                    const p1 = projectedPoints[edge[0]];
+                    const p2 = projectedPoints[edge[1]];
+                    if (p1 && p2) {
+                        ctx.shadowColor = '#3498db';
+                        ctx.shadowBlur = 4;
+                        ctx.strokeStyle = '#3498db';
+                        ctx.lineWidth = 1.8;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                });
+            }
+
+            // Vértices
+            if (projectedPoints.length > 0) {
+                projectedPoints.forEach((p, i) => {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.shadowColor = '#e74c3c';
+                    ctx.shadowBlur = 6;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3.5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.font = '6px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(i, p.x, p.y - 9);
+                });
+            }
+
+            coordDisplay.textContent = `Vértices: ${vertices3D.length}`;
+        }
+
+        // --- gerar sólido aleatório ---
+        function randomSolid() {
+            const solids = [createCube, createPyramid, createPrism];
+            const solidFn = solids[Math.floor(Math.random() * solids.length)];
+            const sizeVal = parseFloat(size.value) || 80;
+            const result = solidFn(sizeVal);
+            vertices3D = result.vertices;
+            edges = result.edges;
+            processProjection();
+            statusMsg.innerHTML = '🎲 Sólido aleatório <span>gerado</span>!';
+        }
+
+        // --- carregar cubo ---
+        function loadCube() {
+            const sizeVal = parseFloat(size.value) || 80;
+            const result = createCube(sizeVal);
+            vertices3D = result.vertices;
+            edges = result.edges;
+            processProjection();
+            statusMsg.innerHTML = '📋 Cubo <span>carregado</span>!';
+        }
+
+        // --- eventos do canvas ---
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            const clampedX = Math.min(Math.max(x, 0), 600);
+            const clampedY = Math.min(Math.max(y, 0), 450);
+
+            const newVertex = {
+                x: (clampedX - 300) / 2,
+                y: -(clampedY - 225) / 2,
+                z: 0
+            };
+            vertices3D.push(newVertex);
+            
+            if (vertices3D.length >= 2) {
+                const lastIdx = vertices3D.length - 1;
+                edges.push([lastIdx - 1, lastIdx]);
+            }
+            
+            processProjection();
+            statusMsg.innerHTML = `✏️ Vértice ${vertices3D.length} adicionado`;
+        });
+
+        // Teclas
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processProjection();
+            }
+            if (e.key === 'Escape') {
+                vertices3D = [];
+                edges = [];
+                projectedPoints = [];
+                draw();
+                statusMsg.innerHTML = '🗑️ Sólido <span>limpo</span>. Clique para adicionar vértices';
+            }
+        });
+
+        // --- eventos dos controles ---
+        rotX.addEventListener('input', () => {
+            rotXDisplay.textContent = `${rotX.value}°`;
+        });
+        rotY.addEventListener('input', () => {
+            rotYDisplay.textContent = `${rotY.value}°`;
+        });
+        obliqueFactor.addEventListener('input', () => {
+            obliqueFactorDisplay.textContent = parseFloat(obliqueFactor.value).toFixed(1);
+        });
+        perspDist.addEventListener('input', () => {
+            perspDistDisplay.textContent = perspDist.value;
+        });
+        size.addEventListener('input', () => {
+            sizeDisplay.textContent = size.value;
+        });
+
+        projectionType.addEventListener('change', () => {
+            const isOblique = projectionType.value === 'oblique';
+            const isPerspective = projectionType.value === 'perspective';
+            obliqueParams.style.display = isOblique ? 'block' : 'none';
+            perspectiveParams.style.display = isPerspective ? 'block' : 'none';
+            processProjection();
+        });
+
+        // --- eventos dos botões ---
+        document.getElementById('btnRandom').addEventListener('click', randomSolid);
+        document.getElementById('btnExample').addEventListener('click', loadCube);
+        document.getElementById('btnApply').addEventListener('click', processProjection);
+        document.getElementById('btnClear').addEventListener('click', () => {
+            vertices3D = [];
+            edges = [];
+            projectedPoints = [];
+            draw();
+            statusMsg.innerHTML = '🗑️ Sólido <span>limpo</span>. Clique para adicionar vértices';
+        });
+
+        // --- inicializar com cubo ---
+        loadCube();
+
+        window.__state = { vertices3D, edges, projectedPoints };
+    })();
+</script>
+
+</body>
+</html>
